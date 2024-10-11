@@ -1,0 +1,4 @@
+
+#deploy all mqtt
+docker-compose -f docker-compose-build.yml build --no-cache
+docker run --restart=always -d -p 4321:8501 --name ma-data mic/ma-data-project:1.0.0

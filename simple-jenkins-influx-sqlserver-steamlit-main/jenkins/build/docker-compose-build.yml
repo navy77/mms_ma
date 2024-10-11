@@ -1,0 +1,7 @@
+version: '3.3'
+services:
+  app:
+    image: "mic/ma-data-project:1.0.0"
+    build:
+      context: .
+      dockerfile: Dockerfile-python
