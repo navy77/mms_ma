@@ -627,8 +627,8 @@ def dataflow_production_influx():
         st.markdown("---")
 
 def dataflow_test():
-        st.caption("TEST RUN DATA")
-        test_run_but = st.button("TEST",key="test_run_but")
+        st.caption("TEST DEFECT DATA")
+        test_run_but = st.button("TEST DEFECT",key="test_run_but")
         if test_run_but:
             try:
                 result = subprocess.check_output(['python', 'main.py'])
@@ -639,8 +639,8 @@ def dataflow_test():
         st.markdown("---")
 
 def dataflow_test2():
-        st.caption("TEST RUN THE STATUS/ALARM DATA")
-        test_run_but2 = st.button("TEST",key="test_run_but2")
+        st.caption("TEST OUTPUT DATA")
+        test_run_but2 = st.button("TEST OUTPUT",key="test_run_but2")
         if test_run_but2:
             try:
                 result = subprocess.check_output(['python', 'main2.py'])
@@ -727,88 +727,91 @@ def monitor_chart():
     st.write("Monitor Defect")
     column_master_list = ['snap_open', 'snap_crack', 'snap_broken', 'shaft_ng','grease_leak','op_dent','laser_ng','foreign','cover_dent','cover_short','pin_ng','con_ng','other']
     get_chart = st.button("Get chart")
-    if get_chart:
-        defect_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_1"])
-        output_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_2"])
+    try:
+        if get_chart:
+            defect_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_1"])
+            output_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_2"])
 
-        defect_data['registered_at'] = pd.to_datetime(defect_data['registered_at'])
-        output_data['registered_at'] = pd.to_datetime(output_data['registered_at'])
+            defect_data['registered_at'] = pd.to_datetime(defect_data['registered_at'])
+            output_data['registered_at'] = pd.to_datetime(output_data['registered_at'])
 
-        defect_data['hour'] = defect_data['registered_at'].dt.floor('h')
-        output_data['hour'] = output_data['registered_at'].dt.floor('h')
-        output_data['registered_at'] = output_data['hour']
+            defect_data['hour'] = defect_data['registered_at'].dt.floor('h')
+            output_data['hour'] = output_data['registered_at'].dt.floor('h')
+            output_data['registered_at'] = output_data['hour']
 
-        pivot_df1 = defect_data.pivot_table(index=['hour', 'mc_no', 'process'], columns='data', aggfunc='size', fill_value=0).reset_index()
-        merged_df = pd.merge(output_data, pivot_df1, left_on=['hour', 'mc_no', 'process'], right_on=['hour', 'mc_no', 'process'], how='left')
-        merged_df = merged_df.fillna(0)
-        merged_df = merged_df.drop(columns=['hour'])
+            pivot_df1 = defect_data.pivot_table(index=['hour', 'mc_no', 'process'], columns='data', aggfunc='size', fill_value=0).reset_index()
+            merged_df = pd.merge(output_data, pivot_df1, left_on=['hour', 'mc_no', 'process'], right_on=['hour', 'mc_no', 'process'], how='left')
+            merged_df = merged_df.fillna(0)
+            merged_df = merged_df.drop(columns=['hour'])
 
-        df = merged_df.copy()
-        for column in column_master_list:
-            if column not in df.columns:
-                df[column] = 0.0
-        print(defect_data)
-        print(output_data)
-        print(df)
+            df = merged_df.copy()
+            for column in column_master_list:
+                if column not in df.columns:
+                    df[column] = 0.0
+            print(defect_data)
+            print(output_data)
+            print(df)
 
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_open'],name='snap_open',yaxis='y2',marker=dict(color='#636EFA'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_crack'],name='snap_crack',yaxis='y2',marker=dict(color='#EF553B'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_broken'],name='snap_broken',yaxis='y2',marker=dict(color='#00CC96'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['shaft_ng'],name='shaft_ng',yaxis='y2',marker=dict(color='#AB63FA'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['grease_leak'],name='grease_leak',yaxis='y2',marker=dict(color='#FFA15A'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['op_dent'],name='op_dent',yaxis='y2',marker=dict(color='#FF6692'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['foreign'],name='foreign',yaxis='y2',marker=dict(color='#B6E880'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['cover_dent'],name='cover_dent',yaxis='y2',marker=dict(color='#FECB52'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['cover_short'],name='cover_short',yaxis='y2',marker=dict(color='#2ca02c'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['pin_ng'],name='pin_ng',yaxis='y2',marker=dict(color='#ff7f0e'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['con_ng'],name='con_ng',yaxis='y2',marker=dict(color='#bcbd22'),opacity=0.3))
-        fig.add_trace(go.Bar(x=df['registered_at'],y=df['other'],name='other',yaxis='y2',marker=dict(color='#17becf'),opacity=0.3))
-
-
-        fig.add_trace(go.Scatter(
-            x=df['registered_at'],
-            y=df['dmc_ok'],
-            mode='lines+markers',
-            name='dmc_ok',
-            line=dict(color='blue', width=3),
-            marker=dict(size=10),
-            yaxis='y1'
-        ))
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_open'],name='snap_open',yaxis='y2',marker=dict(color='#636EFA'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_crack'],name='snap_crack',yaxis='y2',marker=dict(color='#EF553B'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['snap_broken'],name='snap_broken',yaxis='y2',marker=dict(color='#00CC96'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['shaft_ng'],name='shaft_ng',yaxis='y2',marker=dict(color='#AB63FA'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['grease_leak'],name='grease_leak',yaxis='y2',marker=dict(color='#FFA15A'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['op_dent'],name='op_dent',yaxis='y2',marker=dict(color='#FF6692'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['foreign'],name='foreign',yaxis='y2',marker=dict(color='#B6E880'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['cover_dent'],name='cover_dent',yaxis='y2',marker=dict(color='#FECB52'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['cover_short'],name='cover_short',yaxis='y2',marker=dict(color='#2ca02c'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['pin_ng'],name='pin_ng',yaxis='y2',marker=dict(color='#ff7f0e'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['con_ng'],name='con_ng',yaxis='y2',marker=dict(color='#bcbd22'),opacity=0.3))
+            fig.add_trace(go.Bar(x=df['registered_at'],y=df['other'],name='other',yaxis='y2',marker=dict(color='#17becf'),opacity=0.3))
 
 
-        fig.update_layout(
-            title=dict(
-                text='DMC output and Defect',
-                x=0.5,  
-                xanchor='center',
-                font=dict(size=24)
-            ),
-            xaxis=dict(title='Time'),
-            yaxis=dict(
-                title='DMC_OK [pcs]',
-                titlefont=dict(color='black'),
-                tickfont=dict(color='black'),
-                showgrid=False,
-            ),
-            yaxis2=dict(
-                title='Defect [pcs]',
-                titlefont=dict(color='black'),
-                tickfont=dict(color='black'),
-                overlaying='y',
-                side='right'
-            ),
-            barmode='stack',
-            legend=dict(
-                x=1.05,  
-                y=1,     
-                orientation="v"  
-            ),
-            width=1500,
-            height=500
-        )
-        st.plotly_chart(fig)
+            fig.add_trace(go.Scatter(
+                x=df['registered_at'],
+                y=df['dmc_ok'],
+                mode='lines+markers',
+                name='dmc_ok',
+                line=dict(color='blue', width=3),
+                marker=dict(size=10),
+                yaxis='y1'
+            ))
 
+
+            fig.update_layout(
+                title=dict(
+                    text='DMC output and Defect',
+                    x=0.5,  
+                    xanchor='center',
+                    font=dict(size=24)
+                ),
+                xaxis=dict(title='Time'),
+                yaxis=dict(
+                    title='DMC_OK [pcs]',
+                    titlefont=dict(color='black'),
+                    tickfont=dict(color='black'),
+                    showgrid=False,
+                ),
+                yaxis2=dict(
+                    title='Defect [pcs]',
+                    titlefont=dict(color='black'),
+                    tickfont=dict(color='black'),
+                    overlaying='y',
+                    side='right'
+                ),
+                barmode='stack',
+                legend=dict(
+                    x=1.05,  
+                    y=1,     
+                    orientation="v"  
+                ),
+                width=1500,
+                height=500
+            )
+            st.plotly_chart(fig)
+
+    except Exception as e:
+        st.error('Error'+str(e), icon="❌")
 
 def main_layout():
     st.set_page_config(
@@ -852,6 +855,7 @@ def main_layout():
             dataflow_production_mqtt()
             dataflow_production_influx()
             dataflow_test()
+            dataflow_test2()
             dataflow_production_sql()
 
 

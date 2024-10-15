@@ -34,7 +34,8 @@ try:
         mqtt_topic_2=os.getenv('MQTT_TOPIC_2'),
         initial_db=os.getenv('SQL_INITIAL_DB')
     )
-    influx_to_sqlserver.run() # defect
+
+    influx_to_sqlserver.run2() #output
 
 except Exception as e:
     print(e)

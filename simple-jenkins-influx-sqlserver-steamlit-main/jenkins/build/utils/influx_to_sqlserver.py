@@ -183,35 +183,36 @@ class DATA(PREPARE):
     def query_influx(self) :
         try:
             result_lists = []
-            now = datetime.datetime.now()
-            current_time_epoch = int(time.time()) * 1000 *1000 *1000
-            one_hour_ago = now - datetime.timedelta(hours=1)
-            previous_time_epoch = int(one_hour_ago.timestamp()) * 1000 *1000 *1000
+            # now = datetime.datetime.now()
+            # current_time_epoch = int(time.time()) * 1000 *1000 *1000
+            # one_hour_ago = now - datetime.timedelta(hours=1)
+            # previous_time_epoch = int(one_hour_ago.timestamp()) * 1000 *1000 *1000
             client = InfluxDBClient(host=self.influx_server,port=self.influx_port,username=self.influx_user_login,password=self.influx_password,database=self.influx_database)
             mqtt_topic_value = list(str(self.mqtt_topic_1).split(","))
             for i in range(len(mqtt_topic_value)):
-                query = f"select {self.influx_columns_1} from mqtt_consumer where topic = '{mqtt_topic_value[i]}' and time >={previous_time_epoch} and time < {current_time_epoch} order by time desc"
+                query = f"select {self.influx_columns_1} from mqtt_consumer where topic = '{mqtt_topic_value[i]}'  order by time desc limit 10"
                 result = client.query(query)
                 result_df = pd.DataFrame(result.get_points())
                 result_lists.append(result_df)
+
             query_influx = pd.concat(result_lists, ignore_index=True)
-            
-            df = query_influx.copy()
-            df_split = df['topic'].str.split('/', expand=True)
-            df['process'] = df_split[2]
-            df['mc_no'] = df_split[3]
-            df["time"] =   pd.to_datetime(df["time"]).dt.tz_convert(None)
-            df["time"] = df["time"] + pd.DateOffset(hours=7)    
-            df["time"] = df['time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S')[:-3])
-            df.rename(columns={'time':'registered_at'},inplace=True)
-            df['d_str1'] = "-"
-            df['d_str2'] = "-"
-            df = df.fillna(0)
-            if not df.empty :
-                self.df_influx = df
-            else:
+            if query_influx.empty:
                 self.df_influx = None
                 self.info_msg(self.query_influx.__name__,"influxdb data is emply")
+            else:
+                df = query_influx.copy()
+                df_split = df['topic'].str.split('/', expand=True)
+                df['process'] = df_split[2]
+                df['mc_no'] = df_split[3]
+                df["time"] =   pd.to_datetime(df["time"]).dt.tz_convert(None)
+                df["time"] = df["time"] + pd.DateOffset(hours=7)    
+                df["time"] = df['time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S')[:-3])
+                df.rename(columns={'time':'registered_at'},inplace=True)
+                df['d_str1'] = "-"
+                df['d_str2'] = "-"
+                df = df.fillna(0)
+                self.df_influx = df
+                    
         except Exception as e:
             self.error_msg(self.query_influx.__name__,"cannot query influxdb",e)
 
@@ -276,7 +277,6 @@ class DATA(PREPARE):
             self.df_influx['ng'] = self.df_influx['data'].map(self.df_defect.set_index('code')['ng'])
             self.df_influx.drop(columns=['data'],inplace=True)
             self.df_influx.rename(columns = {'ng':'data'}, inplace = True) 
-            
         except Exception as e:
                 self.error_msg(self.convert_defect.__name__,"cannot select with sql code",e)
 
@@ -412,8 +412,8 @@ class DATA(PREPARE):
         self.stamp_time()
         if self.initial_db == 'True':
             self.query_influx()
-            self.convert_defect()
             if self.df_influx is not None:
+                self.convert_defect()
                 self.query_sql()
                 if self.df_sql.empty:
                     self.df_insert = self.df_influx

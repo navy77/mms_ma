@@ -7,6 +7,7 @@ def crontab_every_minute():
         f.write("# START CRON JOB\n")
         f.write("PATH=/usr/local/bin\n")
         f.write("* * * * * python3 /app/main.py\n")
+        f.write("* * * * * python3 /app/main2.py\n")
         f.write("# END CRON JOB")
 
 def crontab_every_5minute():
@@ -14,6 +15,7 @@ def crontab_every_5minute():
         f.write("# START CRON JOB\n")
         f.write("PATH=/usr/local/bin\n")
         f.write("*/5 * * * * python3 /app/main.py\n")
+        f.write("*/5 * * * * python3 /app/main2.py\n")
         f.write("# END CRON JOB")
 
 def crontab_every_hr():
@@ -21,6 +23,7 @@ def crontab_every_hr():
         f.write("# START CRON JOB\n")
         f.write("PATH=/usr/local/bin\n")
         f.write("0 * * * * python3 /app/main.py\n")
+        f.write("0 * * * * python3 /app/main2.py\n")
         f.write("# END CRON JOB")
 
 def crontab_read():
