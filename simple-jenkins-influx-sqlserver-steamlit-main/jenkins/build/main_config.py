@@ -599,7 +599,6 @@ def dataflow_production_mqtt():
             if preview_mqtt_but:
                 mqtt.run_subscribe(st,os.environ["MQTT_BROKER"],1883,preview_mqtt_selectbox)
 
-
         st.markdown("---")
 
 def dataflow_production_influx():
@@ -667,13 +666,30 @@ def preview_production_sqlserver(server,user_login,password,database,table,mc_no
         except Exception as e:
             st.error('Error'+str(e), icon="❌")
 
-def getdata_sqlserver(server,user_login,password,database,table):
+def getdata_sqlserver(server,user_login,password,database,table,mc_no):
         #connect to db
         cnxn = pymssql.connect(server,user_login,password,database)
         cursor = cnxn.cursor(as_dict=True)
         # create table
         try:
-            cursor.execute(f'''SELECT * FROM {table} order by registered_at desc''')
+            cursor.execute(f'''SELECT * FROM {table} where mc_no = '{mc_no}' order by registered_at desc''')
+            data=cursor.fetchall()
+            cursor.close()
+            if len(data) != 0:
+                df=pd.DataFrame(data)
+                return df
+            else:
+                st.error('Error: SQL SERVER NO DATA', icon="❌")
+        except Exception as e:
+            st.error('Error'+str(e), icon="❌")
+
+def getdata_sqlserver_mc(server,user_login,password,database,table):
+        #connect to db
+        cnxn = pymssql.connect(server,user_login,password,database)
+        cursor = cnxn.cursor(as_dict=True)
+        # create table
+        try:
+            cursor.execute(f'''SELECT mc_no FROM {table}''')
             data=cursor.fetchall()
             cursor.close()
             if len(data) != 0:
@@ -692,7 +708,6 @@ def dataflow_production_sql():
         elif type_data=="output":
             mqtt_registry = list(str(os.environ["MQTT_TOPIC_2"]).split(","))
 
-
         preview_sqlserver_selectbox = st.selectbox(
                 "mqtt topic",
                 mqtt_registry,
@@ -704,7 +719,11 @@ def dataflow_production_sql():
             preview_sqlserver_but = st.button("QUERY",key="preview_sqlserver_but")
         
             if preview_sqlserver_but:
+
                 mc_no = preview_sqlserver_selectbox.split("/")[3]
+                if "_" in mc_no:
+                    mc_no = mc_no.split("_")[1]
+
                 process = preview_sqlserver_selectbox.split("/")[2]
                 project_type = preview_sqlserver_selectbox.split("/")[0]
 
@@ -726,11 +745,19 @@ def logging():
 def monitor_chart():
     st.write("Monitor Defect")
     column_master_list = ['snap_open', 'snap_crack', 'snap_broken', 'shaft_ng','grease_leak','op_dent','laser_ng','foreign','cover_dent','cover_short','pin_ng','con_ng','other']
+    mc_list = "got/ma/demo/ma_vm01","got/ma/demo/ma_vm02"
+
+    col1,col2,col3 = st.columns(3)
+    with col1:
+        mc_list = getdata_sqlserver_mc(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_2"])
+        mc_list.drop_duplicates(subset='mc_no',inplace=True)
+        if not mc_list.empty:
+            get_machine_no = st.selectbox("Select machine",mc_list,index=None,placeholder="select topic...",key='topic')
     get_chart = st.button("Get chart")
     try:
         if get_chart:
-            defect_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_1"])
-            output_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_2"])
+            defect_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_1"],get_machine_no)
+            output_data = getdata_sqlserver(os.environ["SQL_SERVER"],os.environ["SQL_USER_LOGIN"],os.environ["SQL_PASSWORD"],os.environ["SQL_DATABASE"],os.environ["TABLE_2"],get_machine_no)
 
             defect_data['registered_at'] = pd.to_datetime(defect_data['registered_at'])
             output_data['registered_at'] = pd.to_datetime(output_data['registered_at'])
@@ -748,8 +775,8 @@ def monitor_chart():
             for column in column_master_list:
                 if column not in df.columns:
                     df[column] = 0.0
-            print(defect_data)
-            print(output_data)
+            # print(defect_data)
+            # print(output_data)
             print(df)
 
             fig = go.Figure()

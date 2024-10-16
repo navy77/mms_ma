@@ -194,8 +194,8 @@ class DATA(PREPARE):
                 result = client.query(query)
                 result_df = pd.DataFrame(result.get_points())
                 result_lists.append(result_df)
-
-            query_influx = pd.concat(result_lists, ignore_index=True)
+            if result_lists:
+                query_influx = pd.concat(result_lists, ignore_index=True)
             if query_influx.empty:
                 self.df_influx = None
                 self.info_msg(self.query_influx.__name__,"influxdb data is emply")
@@ -218,12 +218,12 @@ class DATA(PREPARE):
 
     def query_influx2(self) :
         try:
+            result_lists = []    
             client = InfluxDBClient(self.influx_server, self.influx_port, self.influx_user_login,self.influx_password, self.influx_database)
             mqtt_topic_value = list(str(self.mqtt_topic_2).split(","))
-
             now = datetime.datetime.now()
             current_time_epoch = int(time.time()) * 1000 *1000 *1000
-            one_hour_ago = now - datetime.timedelta(hours=1)
+            one_hour_ago = now - datetime.timedelta(hours=10)
             previous_time_epoch = int(one_hour_ago.timestamp()) * 1000 *1000 *1000
    
             for i in range(len(mqtt_topic_value)):
@@ -245,12 +245,14 @@ class DATA(PREPARE):
                             df = pd.concat([df1_filtered,df2_filtered]).reset_index(drop=True)
                         else:
                             df = df1_filtered
+                    df = df.copy()
                     df.at[0, 'dmc_ok'] = df['dmc_ok'].sum()
                     df.drop(columns=['judge'],inplace=True)
                     df = df.head(1)        
                     df_split = df['topic'].str.split('/', expand=True)
                     df['process'] = df_split[2]
-                    df['mc_no'] = df_split[3]
+                    df['mc_no'] = df_split[3].str.split('_',expand=True)[1]
+                    
                     df["time"] =   pd.to_datetime(df["time"]).dt.tz_convert(None)
                     df["time"] = df["time"] + pd.DateOffset(hours=7)    
                     df["time"] = df['time'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S')[:-3])
@@ -258,10 +260,18 @@ class DATA(PREPARE):
                     df['d_str1'] = "-"
                     df['d_str2'] = "-"
                     df = df.fillna(0)
-                    self.df_influx2 = df
-                else:
-                    self.df_influx2 = None
-                    self.info_msg2(self.query_influx2.__name__,"influxdb2 data is emply")
+                    result_lists.append(df)
+
+                    # self.df_influx2 = df
+                # else:
+                #     self.df_influx2 = None
+                #     self.info_msg2(self.query_influx2.__name__,"influxdb2 data is emply")
+            
+            if result_lists:
+                query_influx = pd.concat(result_lists, ignore_index=True)
+
+            self.df_influx2 = query_influx
+
         except Exception as e:
             self.error_msg2(self.query_influx2.__name__,"cannot query influxdb",e)
 
@@ -436,7 +446,8 @@ class DATA(PREPARE):
                 self.df_insert2 = self.df_influx2
                 self.df_to_db2()
                 self.ok_msg2(self.df_to_db2.__name__)
-
+            else:
+                self.info_msg2(self.df_to_db2.__name__,f"Not have data in period time") 
         else:
             print("db is not initial yet")
 if __name__ == "__main__":
